@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legal-local-rag"
+version = "0.1.0"
+description = "Local private legal knowledge-base RAG QA system based on LangChain and ChatGLM."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Legal RAG Project" }]
+dependencies = [
+  "langchain>=0.2",
+  "langchain-community>=0.2",
+  "langchain-chroma>=0.1",
+  "langchain-huggingface>=0.0.3",
+  "chromadb>=0.5",
+  "sentence-transformers>=3.0",
+  "transformers>=4.40",
+  "torch>=2.1",
+  "accelerate>=0.30",
+  "pypdf>=4.0",
+  "docx2txt>=0.8",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+faiss = ["faiss-cpu>=1.8"]
+ui = ["streamlit>=1.35"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+legal-rag = "legal_rag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+

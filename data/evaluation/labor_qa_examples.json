@@ -1,0 +1,130 @@
+{
+  "version": "2026-06-09",
+  "corpus_root": "data/documents/formal",
+  "scope": "首批劳动用工法规摘录，用于本地检索效果回归",
+  "examples": [
+    {
+      "id": "labor-001",
+      "question": "劳动合同最晚应当在什么时候签订？",
+      "expected_sources": [
+        "labor/national_law/laodong_hetong_fa_excerpt.md",
+        "labor/administrative_regulation/laodong_hetong_fa_shishi_tiaoli_excerpt.md"
+      ],
+      "expected_terms": [
+        "自用工之日起一个月内订立书面劳动合同",
+        "超过一个月不满一年",
+        "每月支付两倍的工资"
+      ]
+    },
+    {
+      "id": "labor-002",
+      "question": "劳动合同试用期最长可以约定多久？同一员工能约定几次试用期？",
+      "expected_sources": [
+        "labor/national_law/laodong_hetong_fa_excerpt.md"
+      ],
+      "expected_terms": [
+        "试用期不得超过六个月",
+        "同一用人单位与同一劳动者只能约定一次试用期"
+      ]
+    },
+    {
+      "id": "labor-003",
+      "question": "试用期工资的法定底线是什么？",
+      "expected_sources": [
+        "labor/national_law/laodong_hetong_fa_excerpt.md",
+        "labor/administrative_regulation/laodong_hetong_fa_shishi_tiaoli_excerpt.md"
+      ],
+      "expected_terms": [
+        "百分之八十",
+        "不得低于用人单位所在地的最低工资标准"
+      ]
+    },
+    {
+      "id": "labor-004",
+      "question": "员工主动解除劳动合同需要提前多久通知？试用期内呢？",
+      "expected_sources": [
+        "labor/national_law/laodong_hetong_fa_excerpt.md"
+      ],
+      "expected_terms": [
+        "提前三十日以书面形式通知",
+        "试用期内提前三日通知"
+      ]
+    },
+    {
+      "id": "labor-005",
+      "question": "解除或终止劳动合同时，公司应当出具什么证明，证明里应写哪些事项？",
+      "expected_sources": [
+        "labor/national_law/laodong_hetong_fa_excerpt.md",
+        "labor/administrative_regulation/laodong_hetong_fa_shishi_tiaoli_excerpt.md"
+      ],
+      "expected_terms": [
+        "出具解除或者终止劳动合同的证明",
+        "劳动合同期限",
+        "工作岗位",
+        "在本单位的工作年限"
+      ]
+    },
+    {
+      "id": "labor-006",
+      "question": "经济补偿一般按什么标准计算？月工资口径是什么？",
+      "expected_sources": [
+        "labor/national_law/laodong_hetong_fa_excerpt.md",
+        "labor/administrative_regulation/laodong_hetong_fa_shishi_tiaoli_excerpt.md"
+      ],
+      "expected_terms": [
+        "每满一年支付一个月工资",
+        "不满六个月的，向劳动者支付半个月工资",
+        "月工资按照劳动者应得工资计算"
+      ]
+    },
+    {
+      "id": "labor-007",
+      "question": "工资可以无故拖欠或克扣吗？工资应当怎样支付？",
+      "expected_sources": [
+        "labor/national_law/laodong_fa_excerpt.md"
+      ],
+      "expected_terms": [
+        "以货币形式按月支付",
+        "不得克扣或者无故拖欠"
+      ]
+    },
+    {
+      "id": "labor-008",
+      "question": "延长工作时间、休息日加班和法定休假日加班的工资标准分别是多少？",
+      "expected_sources": [
+        "labor/national_law/laodong_fa_excerpt.md"
+      ],
+      "expected_terms": [
+        "百分之一百五十",
+        "百分之二百",
+        "百分之三百"
+      ]
+    },
+    {
+      "id": "labor-009",
+      "question": "用人单位应当在什么时候为职工办理社保登记？社保费应当如何缴纳？",
+      "expected_sources": [
+        "labor/national_law/shehui_baoxian_fa_excerpt.md",
+        "labor/national_law/laodong_fa_excerpt.md"
+      ],
+      "expected_terms": [
+        "自用工之日起三十日内",
+        "按时足额缴纳社会保险费",
+        "用人单位和劳动者必须依法参加社会保险"
+      ]
+    },
+    {
+      "id": "labor-010",
+      "question": "劳动争议应向哪里申请仲裁？仲裁时效一般是多久？",
+      "expected_sources": [
+        "labor/national_law/laodong_zhengyi_tiaojie_zhongcai_fa_excerpt.md",
+        "labor/national_law/laodong_fa_excerpt.md"
+      ],
+      "expected_terms": [
+        "劳动合同履行地或者用人单位所在地",
+        "仲裁的时效期间为一年",
+        "可以直接向劳动争议仲裁委员会申请仲裁"
+      ]
+    }
+  ]
+}
