@@ -60,6 +60,33 @@ legal-rag ask "试用期工资有什么要求？" --llm-backend extractive
 streamlit run app.py
 ```
 
+## GitHub 推送方式
+
+目标仓库：`guaixiaowuwuwu/local-legal-rag`
+
+本机在 Codex shell 中访问 GitHub SSH 直连 22 端口会被代理/fake IP 关闭，已验证可用方式是走 GitHub SSH-over-443，并通过本机 SOCKS5 代理 `127.0.0.1:7897`：
+
+```bash
+git remote set-url origin ssh://git@ssh.github.com:443/guaixiaowuwuwu/local-legal-rag.git
+git config core.sshCommand "ssh -o 'ProxyCommand=nc -X 5 -x 127.0.0.1:7897 %h %p'"
+git push
+```
+
+首次或 agent 为空时，先加入本机 SSH key：
+
+```bash
+ssh-add ~/.ssh/id_ed25519
+```
+
+推送前务必先检查：
+
+```bash
+git status --short
+git log --oneline --decorate --max-count=5
+```
+
+不要强推覆盖远端；如果远端已有提交，先 `git fetch origin main` 并正常合并或变基，确认内容后再推送。
+
 ## 下一阶段优先级
 
 1. 先补齐本地环境与测试基线。
@@ -76,4 +103,3 @@ streamlit run app.py
 - 修改 Prompt、切分逻辑、检索逻辑时，要重点考虑法律场景下的准确性与可追溯性。
 - 若发现当前机器缺少依赖，不要直接声称功能失败；先说明缺少的依赖和可替代验证方式。
 - 遇到用户已有改动时，不要回滚，先理解并在其基础上继续工作。
-
