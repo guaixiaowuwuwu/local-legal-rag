@@ -26,7 +26,7 @@ class RAGConfig:
     vector_store: str = "chroma"
     collection_name: str = "legal_rag"
 
-    embedding_model: str = "BAAI/bge-m3"
+    embedding_model: str = "hash"
     embedding_device: str = "cpu"
     normalize_embeddings: bool = True
 
@@ -34,7 +34,7 @@ class RAGConfig:
     chunk_overlap: int = 120
     top_k: int = 5
 
-    llm_backend: str = "chatglm"
+    llm_backend: str = "extractive"
     llm_model: str = "THUDM/chatglm3-6b"
     llm_device: str = "auto"
     max_new_tokens: int = 768

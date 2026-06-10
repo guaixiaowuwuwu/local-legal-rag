@@ -9,11 +9,16 @@ from typing import Any
 
 from legal_rag.config import RAGConfig
 
+try:  # pragma: no cover - depends on optional LangChain install.
+    from langchain_core.embeddings import Embeddings as BaseEmbeddings
+except Exception:  # pragma: no cover - covered in dependency-light tests.
+    BaseEmbeddings = object
+
 _HASH_EMBEDDING_NAMES = {"hash", "local-hash", "debug-hash"}
 _TOKEN_RE = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]", flags=re.I)
 
 
-class HashingEmbeddings:
+class HashingEmbeddings(BaseEmbeddings):
     """Small deterministic embedding backend for local smoke tests."""
 
     def __init__(self, dimension: int = 2048, normalize: bool = True) -> None:
@@ -25,6 +30,9 @@ class HashingEmbeddings:
 
     def embed_query(self, text: str) -> list[float]:
         return self._embed(text)
+
+    def __call__(self, text: str) -> list[float]:
+        return self.embed_query(text)
 
     def _embed(self, text: str) -> list[float]:
         vector = [0.0] * self.dimension
@@ -55,11 +63,23 @@ def build_embeddings(config: RAGConfig) -> Any:
                 "Install langchain-huggingface and sentence-transformers to use local embeddings."
             ) from exc
 
-    return HuggingFaceEmbeddings(
-        model_name=config.embedding_model,
-        model_kwargs={"device": config.embedding_device},
-        encode_kwargs={"normalize_embeddings": config.normalize_embeddings},
-    )
+    try:
+        return HuggingFaceEmbeddings(
+            model_name=config.embedding_model,
+            model_kwargs={"device": config.embedding_device},
+            encode_kwargs={"normalize_embeddings": config.normalize_embeddings},
+        )
+    except ImportError as exc:
+        raise RuntimeError(
+            "Embedding 模型依赖缺失：当前配置需要 sentence-transformers/"
+            "langchain-huggingface。轻量演示请使用 --embedding-model hash；"
+            "真实模型请安装完整依赖并确认模型可访问。"
+        ) from exc
+    except Exception as exc:
+        raise RuntimeError(
+            f"初始化 Embedding 模型失败：{config.embedding_model}。"
+            "请检查模型名称、本地路径、网络和设备配置。"
+        ) from exc
 
 
 def _tokens(text: str) -> list[str]:

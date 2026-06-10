@@ -69,11 +69,22 @@ PYTHONPATH=src python3 -m legal_rag.cli smoke
 legal-rag smoke
 ```
 
-如果已经安装完整依赖，也可以用 Chroma/FAISS 和真实 Embedding 做烟测：
+默认配置使用 `hash` Embedding 和 `extractive` 回答模式，优先保证离线 MVP
+可重复运行。如果已经配置真实 Embedding 模型，可以通过环境变量或命令行参数覆盖
+`LEGAL_RAG_EMBEDDING_MODEL` / `--embedding-model`。
+
+用 Chroma 做默认烟测：
 
 ```bash
 legal-rag ingest --reset --llm-backend extractive
 legal-rag ask "试用期工资有什么要求？" --llm-backend extractive
+```
+
+用 FAISS 做同样烟测：
+
+```bash
+legal-rag ingest --reset --llm-backend extractive --vector-store faiss --persist-dir data/vectorstore-faiss-smoke
+legal-rag ask "试用期工资有什么要求？" --llm-backend extractive --vector-store faiss --persist-dir data/vectorstore-faiss-smoke
 ```
 
 接入本地 ChatGLM：

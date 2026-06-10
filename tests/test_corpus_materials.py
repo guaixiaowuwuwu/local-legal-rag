@@ -39,6 +39,14 @@ class CorpusMaterialsTest(unittest.TestCase):
         ):
             self.assertIn(term, combined)
 
+    def test_loader_reports_directory_with_no_supported_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            docs_dir = Path(tmpdir)
+            (docs_dir / "image.png").write_text("not supported", encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "未在文档目录中找到支持的文件"):
+                load_local_documents(docs_dir)
+
     def test_regression_examples_reference_existing_sources(self):
         payload = json.loads(QA_EXAMPLES.read_text(encoding="utf-8"))
         examples = payload["examples"]

@@ -16,10 +16,19 @@ SUPPORTED_SUFFIXES = TEXT_SUFFIXES | PDF_SUFFIXES | WORD_SUFFIXES
 def load_local_documents(docs_dir: Path | str) -> List[Document]:
     root = Path(docs_dir)
     if not root.exists():
-        raise FileNotFoundError(f"Documents directory does not exist: {root}")
+        raise FileNotFoundError(
+            f"文档目录不存在：{root}。请检查 --docs-dir 或 LEGAL_RAG_DOCS_DIR。"
+        )
+    if not root.is_dir():
+        raise NotADirectoryError(f"文档路径不是目录：{root}。请传入资料目录。")
+
+    supported_files = list(_iter_supported_files(root))
+    if not supported_files:
+        supported = "、".join(sorted(SUPPORTED_SUFFIXES))
+        raise RuntimeError(f"未在文档目录中找到支持的文件：{root}。支持格式：{supported}。")
 
     documents: List[Document] = []
-    for path in _iter_supported_files(root):
+    for path in supported_files:
         suffix = path.suffix.lower()
         if suffix in TEXT_SUFFIXES:
             documents.append(_load_text_file(path, root))
@@ -39,7 +48,10 @@ def _iter_supported_files(root: Path) -> Iterable[Path]:
 
 
 def _load_text_file(path: Path, root: Path) -> Document:
-    content = path.read_text(encoding="utf-8")
+    try:
+        content = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(f"读取文本文件失败：{path}。请确认文件为 UTF-8 编码。") from exc
     return make_document(content, _base_metadata(path, root))
 
 
@@ -49,7 +61,12 @@ def _load_pdf(path: Path, root: Path) -> List[Document]:
     except ImportError as exc:  # pragma: no cover - depends on runtime install.
         raise RuntimeError("Install langchain-community and pypdf to load PDF files.") from exc
 
-    loaded = PyPDFLoader(str(path)).load()
+    try:
+        loaded = PyPDFLoader(str(path)).load()
+    except Exception as exc:
+        raise RuntimeError(
+            f"读取 PDF 文件失败：{path}。文件可能已损坏、加密，或缺少 pypdf 依赖。"
+        ) from exc
     return _attach_base_metadata(loaded, path, root)
 
 
@@ -59,7 +76,12 @@ def _load_word(path: Path, root: Path) -> List[Document]:
     except ImportError as exc:  # pragma: no cover - depends on runtime install.
         raise RuntimeError("Install langchain-community and docx2txt to load Word files.") from exc
 
-    loaded = Docx2txtLoader(str(path)).load()
+    try:
+        loaded = Docx2txtLoader(str(path)).load()
+    except Exception as exc:
+        raise RuntimeError(
+            f"读取 Word 文件失败：{path}。文件可能已损坏，或缺少 docx2txt 依赖。"
+        ) from exc
     return _attach_base_metadata(loaded, path, root)
 
 
@@ -80,4 +102,3 @@ def _base_metadata(path: Path, root: Path) -> dict:
         "file_name": path.name,
         "file_type": path.suffix.lower().lstrip("."),
     }
-

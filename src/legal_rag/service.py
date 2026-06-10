@@ -41,13 +41,21 @@ class LegalRAGService:
             reset_vector_store(self.config)
 
         raw_documents = load_local_documents(self.config.docs_dir)
+        if not raw_documents:
+            raise RuntimeError(
+                f"文档目录未加载到任何内容：{self.config.docs_dir}。"
+                "请确认文件不是空文件，并使用支持的格式。"
+            )
         chunks = split_documents(
             raw_documents,
             chunk_size=self.config.chunk_size,
             chunk_overlap=self.config.chunk_overlap,
         )
         if not chunks:
-            raise RuntimeError(f"No documents were loaded from {self.config.docs_dir}")
+            raise RuntimeError(
+                f"文档已读取但没有可入库文本：{self.config.docs_dir}。"
+                "请检查文件内容是否为空，或 PDF/Word 是否可正确解析。"
+            )
 
         self.vector_store = create_vector_store(chunks, self._get_embeddings(), self.config)
         return {"documents": len(raw_documents), "chunks": len(chunks)}
@@ -73,19 +81,55 @@ class LegalRAGService:
         )
 
     def retrieve(self, question: str) -> List[Document]:
+        if not question.strip():
+            raise ValueError("检索问题不能为空。")
+
         store = self._get_vector_store()
+        if self.config.vector_store in {"chroma", "faiss"} and hasattr(
+            store,
+            "similarity_search_with_score",
+        ):
+            try:
+                results = store.similarity_search_with_score(question, k=self.config.top_k)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"检索失败：向量库 {self.config.vector_store} 的打分检索出错。"
+                    f"原因：{exc}"
+                ) from exc
+            return [_attach_score(doc, score) for doc, score in results]
+
         if hasattr(store, "similarity_search_with_relevance_scores"):
             try:
                 results = store.similarity_search_with_relevance_scores(question, k=self.config.top_k)
                 return [_attach_score(doc, score) for doc, score in results]
-            except Exception:
+            except NotImplementedError:
                 pass
+            except Exception as exc:
+                raise RuntimeError(
+                    f"检索失败：向量库 {self.config.vector_store} 的相关度检索出错。"
+                    f"原因：{exc}"
+                ) from exc
 
         if hasattr(store, "similarity_search_with_score"):
-            results = store.similarity_search_with_score(question, k=self.config.top_k)
+            try:
+                results = store.similarity_search_with_score(question, k=self.config.top_k)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"检索失败：向量库 {self.config.vector_store} 的打分检索出错。"
+                    f"原因：{exc}"
+                ) from exc
             return [_attach_score(doc, score) for doc, score in results]
 
-        return store.similarity_search(question, k=self.config.top_k)
+        if hasattr(store, "similarity_search"):
+            try:
+                return store.similarity_search(question, k=self.config.top_k)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"检索失败：向量库 {self.config.vector_store} 的相似度检索出错。"
+                    f"原因：{exc}"
+                ) from exc
+
+        raise RuntimeError("检索失败：当前向量库对象不支持 similarity_search 接口。")
 
     def _get_embeddings(self) -> Any:
         if self._embeddings is None:
@@ -94,7 +138,15 @@ class LegalRAGService:
 
     def _get_vector_store(self) -> Any:
         if self.vector_store is None:
-            self.vector_store = load_vector_store(self._get_embeddings(), self.config)
+            try:
+                self.vector_store = load_vector_store(self._get_embeddings(), self.config)
+            except RuntimeError:
+                raise
+            except Exception as exc:
+                raise RuntimeError(
+                    f"加载向量库失败：{self.config.vector_store} -> {self.config.persist_dir}。"
+                    "请确认已经成功建库，或先运行 legal-rag ingest --reset。"
+                ) from exc
         return self.vector_store
 
 
@@ -110,4 +162,3 @@ def _attach_score(document: Document, score: Any) -> Document:
 
 def service_from_config(config: RAGConfig, base_dir: Optional[Path] = None) -> LegalRAGService:
     return LegalRAGService(config.resolve_paths(base_dir))
-

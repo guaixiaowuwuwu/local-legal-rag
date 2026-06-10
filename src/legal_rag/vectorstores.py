@@ -29,11 +29,13 @@ def create_vector_store(
 
     if config.vector_store == "chroma":
         Chroma = _import_chroma()
+        client_settings = _chroma_client_settings(config)
         store = Chroma.from_documents(
             documents=documents,
             embedding=embeddings,
             persist_directory=str(config.persist_dir),
             collection_name=config.collection_name,
+            client_settings=client_settings,
         )
         if hasattr(store, "persist"):
             store.persist()
@@ -53,11 +55,15 @@ def load_vector_store(embeddings: Any, config: RAGConfig) -> Any:
         return LocalVectorStore.load(embeddings, config)
 
     if config.vector_store == "chroma":
+        if not config.persist_dir.exists() or not any(config.persist_dir.iterdir()):
+            raise RuntimeError(_missing_store_message(config))
         Chroma = _import_chroma()
+        client_settings = _chroma_client_settings(config)
         return Chroma(
             persist_directory=str(config.persist_dir),
             collection_name=config.collection_name,
             embedding_function=embeddings,
+            client_settings=client_settings,
         )
 
     if config.vector_store == "faiss":
@@ -65,7 +71,9 @@ def load_vector_store(embeddings: Any, config: RAGConfig) -> Any:
         index_file = config.persist_dir / f"{config.collection_name}.faiss"
         if not index_file.exists():
             fallback = config.persist_dir / "index.faiss"
-            index_name = "index" if fallback.exists() else config.collection_name
+            if not fallback.exists():
+                raise RuntimeError(_missing_store_message(config))
+            index_name = "index"
         else:
             index_name = config.collection_name
         return FAISS.load_local(
@@ -110,7 +118,7 @@ class LocalVectorStore:
     def load(cls, embeddings: Any, config: RAGConfig) -> "LocalVectorStore":
         path = _local_store_path(config)
         if not path.exists():
-            return cls([], [], embeddings, path)
+            raise RuntimeError(_missing_store_message(config))
 
         payload = json.loads(path.read_text(encoding="utf-8"))
         documents = [
@@ -164,6 +172,13 @@ def _local_store_path(config: RAGConfig) -> Path:
     return config.persist_dir / f"{config.collection_name}.json"
 
 
+def _missing_store_message(config: RAGConfig) -> str:
+    return (
+        f"向量库不存在或未完成建库：{config.vector_store} -> {config.persist_dir}。"
+        "请先运行 legal-rag ingest --reset。"
+    )
+
+
 def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
     if not left or not right:
         return 0.0
@@ -184,6 +199,18 @@ def _import_chroma() -> Any:
         except ImportError as exc:  # pragma: no cover - depends on runtime install.
             raise RuntimeError("Install langchain-chroma or langchain-community to use Chroma.") from exc
     return Chroma
+
+
+def _chroma_client_settings(config: RAGConfig) -> Any:
+    try:
+        from chromadb.config import Settings
+    except Exception:
+        return None
+    return Settings(
+        anonymized_telemetry=False,
+        is_persistent=True,
+        persist_directory=str(config.persist_dir),
+    )
 
 
 def _import_faiss() -> Any:

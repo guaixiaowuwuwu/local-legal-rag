@@ -1,7 +1,7 @@
 import io
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from legal_rag.cli import main
@@ -38,6 +38,30 @@ class CliTest(unittest.TestCase):
             self.assertIn("入库完成", text)
             self.assertIn("来源：", text)
             self.assertTrue((persist_dir / "legal_rag.json").exists())
+
+    def test_ingest_bad_docs_dir_returns_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing_dir = Path(tmpdir) / "missing"
+            persist_dir = Path(tmpdir) / "vectorstore"
+
+            error = io.StringIO()
+            with redirect_stderr(error):
+                exit_code = main(
+                    [
+                        "ingest",
+                        "--docs-dir",
+                        str(missing_dir),
+                        "--persist-dir",
+                        str(persist_dir),
+                        "--embedding-model",
+                        "hash",
+                        "--llm-backend",
+                        "extractive",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 1)
+            self.assertIn("错误：文档目录不存在", error.getvalue())
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -35,24 +36,28 @@ def main(argv: Optional[list[str]] = None) -> int:
         config = _with_smoke_defaults(config, args)
     service = LegalRAGService(config)
 
-    if args.command == "ingest":
-        stats = service.ingest(reset=args.reset)
-        print(f"入库完成：原始文档 {stats['documents']} 份，切分片段 {stats['chunks']} 条。")
-        print(f"向量库：{config.vector_store} -> {config.persist_dir}")
-        return 0
+    try:
+        if args.command == "ingest":
+            stats = service.ingest(reset=args.reset)
+            print(f"入库完成：原始文档 {stats['documents']} 份，切分片段 {stats['chunks']} 条。")
+            print(f"向量库：{config.vector_store} -> {config.persist_dir}")
+            return 0
 
-    if args.command == "ask":
-        result = service.ask(args.question)
-        _print_answer(result)
-        return 0
+        if args.command == "ask":
+            result = service.ask(args.question)
+            _print_answer(result)
+            return 0
 
-    if args.command == "smoke":
-        stats = service.ingest(reset=not args.no_reset)
-        print(f"入库完成：原始文档 {stats['documents']} 份，切分片段 {stats['chunks']} 条。")
-        print(f"向量库：{config.vector_store} -> {config.persist_dir}")
-        result = service.ask(args.question)
-        _print_answer(result)
-        return 0
+        if args.command == "smoke":
+            stats = service.ingest(reset=not args.no_reset)
+            print(f"入库完成：原始文档 {stats['documents']} 份，切分片段 {stats['chunks']} 条。")
+            print(f"向量库：{config.vector_store} -> {config.persist_dir}")
+            result = service.ask(args.question)
+            _print_answer(result)
+            return 0
+    except (FileNotFoundError, NotADirectoryError, RuntimeError, ValueError) as exc:
+        print(f"错误：{exc}", file=sys.stderr)
+        return 1
 
     parser.error(f"Unknown command: {args.command}")
     return 2

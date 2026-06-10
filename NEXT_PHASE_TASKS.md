@@ -49,11 +49,26 @@
 
 ## 3. 向量库与检索能力
 
-- [ ] 使用 `extractive` 模式完成 Chroma 建库与问答烟测。
-- [ ] 使用 FAISS 完成一次同样的建库与问答烟测。
-- [ ] 比较 Chroma 与 FAISS 在本机上的速度、磁盘占用和检索结果。
-- [ ] 为 `retrieve` 增加单元测试或可替代的假向量库测试。
-- [ ] 设计空库、坏路径、无支持文件、损坏 PDF 等异常提示。
+- [x] 使用 `extractive` 模式完成 Chroma 建库与问答烟测。
+- [x] 使用 FAISS 完成一次同样的建库与问答烟测。
+- [x] 比较 Chroma 与 FAISS 在本机上的速度、磁盘占用和检索结果。
+- [x] 为 `retrieve` 增加单元测试或可替代的假向量库测试。
+- [x] 设计空库、坏路径、无支持文件、损坏 PDF 等异常提示。
+
+当前状态：
+
+- 默认 MVP 配置已切到 `hash` Embedding 和 `extractive` 回答模式；
+  可在未安装真实本地模型依赖时运行 Chroma/FAISS 建库与问答。
+- Chroma 烟测：`legal-rag ingest --reset --llm-backend extractive`
+  成功，原始文档 5 份、切分片段 11 条；建库 `real 0.69s`，
+  问答 `real 0.61s`；`data/vectorstore` 约 8.5M。
+- FAISS 烟测：使用 `--vector-store faiss --persist-dir data/vectorstore-faiss-smoke`
+  成功，原始文档 5 份、切分片段 11 条；建库 `real 0.39s`，
+  问答 `real 0.37s`；目录约 116K。
+- 同题“试用期工资有什么要求？”下，Chroma 与 FAISS 返回的 Top-5 来源顺序一致，
+  第一来源均为 `labor/national_law/laodong_hetong_fa_excerpt.md`。
+- 已增加 `retrieve` 假向量库测试，覆盖相关度打分、打分回退和真实异常不吞掉。
+- 已增加坏路径、无支持文件、缺失向量库和损坏 PDF 的明确错误提示。
 
 验收标准：
 
