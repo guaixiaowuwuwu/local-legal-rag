@@ -1,0 +1,55 @@
+services:
+  postgres-pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: legal-rag-postgres
+    environment:
+      POSTGRES_DB: legal_rag
+      POSTGRES_USER: legal_rag
+      POSTGRES_PASSWORD: legal_rag
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U legal_rag -d legal_rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    container_name: legal-rag-backend
+    depends_on:
+      postgres-pgvector:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-pgvector:5432/legal_rag
+      SPRING_DATASOURCE_USERNAME: legal_rag
+      SPRING_DATASOURCE_PASSWORD: legal_rag
+      SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-https://api.openai.com/v1}
+      SPRING_AI_OPENAI_API_KEY: ${SPRING_AI_OPENAI_API_KEY:-}
+      SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:-gpt-4o-mini}
+      SPRING_AI_OPENAI_EMBEDDING_OPTIONS_MODEL: ${SPRING_AI_OPENAI_EMBEDDING_OPTIONS_MODEL:-text-embedding-3-small}
+      SPRING_AI_VECTORSTORE_PGVECTOR_DIMENSIONS: ${SPRING_AI_VECTORSTORE_PGVECTOR_DIMENSIONS:-1536}
+      LEGAL_RAG_UPLOAD_DIR: /app/storage/uploads
+      LEGAL_RAG_CHUNK_SIZE: ${LEGAL_RAG_CHUNK_SIZE:-900}
+      LEGAL_RAG_CHUNK_OVERLAP: ${LEGAL_RAG_CHUNK_OVERLAP:-120}
+      LEGAL_RAG_TOP_K: ${LEGAL_RAG_TOP_K:-5}
+    ports:
+      - "8080:8080"
+    volumes:
+      - upload_data:/app/storage/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: legal-rag-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:
+  upload_data:

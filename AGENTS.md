@@ -4,102 +4,65 @@
 
 ## 项目定位
 
-这是一个“法律检索 · 本地知识库 RAG 问答系统”原型，目标是将 PDF、Word、Markdown、TXT 等本地资料读取后切分、向量化、写入本地向量库，并基于检索结果生成带来源的克制回答。
+这是一个“法律检索 · 本地知识库 RAG 问答系统”，当前已升级为 Spring Boot + Vue 前后端分离架构。目标是支持多知识库、文档上传、异步建库、pgvector 向量检索、OpenAI-compatible 模型问答和可核验来源展示。
 
-当前阶段重点是完成可本地演示的 MVP，而不是生产级平台。
+当前阶段重点是完成可本地 Docker Compose 演示的 MVP，而不是生产级多租户平台。
 
 ## 技术栈
 
-- Python 包结构位于 `src/legal_rag/`。
-- CLI 入口：`src/legal_rag/cli.py`。
-- Streamlit 前端入口：`app.py`。
-- 配置文件：`configs/default.yaml`。
-- 示例资料目录：`data/documents/`。
-- 测试目录：`tests/`。
-- 依赖声明：`pyproject.toml`。
+- 后端：`backend/`，Spring Boot 3.5.x，Java 17，Maven。
+- 前端：`frontend/`，Vue 3 + Vite + TypeScript。
+- 数据库：PostgreSQL + pgvector，通过 Docker Compose 启动。
+- 数据库迁移：`backend/src/main/resources/db/migration/`。
+- 示例资料：`data/documents/`。
+- 启动编排：`docker-compose.yml`。
 
 ## 工作原则
 
 - 非小改动先看现有代码结构，再制定简短计划。
-- 优先保持当前轻量架构，不要过早引入复杂服务端、数据库或前端框架。
-- 默认先保证 `extractive` 模式可跑通，再接入 ChatGLM 等本地大模型。
+- 优先保持当前 MVP 架构，不要过早引入登录、多租户、复杂消息队列或微服务拆分。
 - 法律问答必须强调来源和依据，避免编造法条、案号、发布日期、裁判观点。
 - 不要把演示资料当作正式法律文本。
-- 不要提交本地模型、向量库、隐私资料或大文件。
+- 不要提交模型、上传文件、数据库数据、向量库或隐私资料。
+- 前端保持工作台风格，优先清晰、密集、可扫描。
 
 ## 推荐验证命令
 
-在未安装完整开发依赖时，可以先运行：
+后端：
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
+cd backend
+mvn test
 ```
 
-安装开发依赖后，优先运行：
+前端：
 
 ```bash
-python3 -m pytest -q
+cd frontend
+npm test
+npm run build
 ```
 
-CLI 帮助检查：
+端到端演示：
 
 ```bash
-PYTHONPATH=src python3 -m legal_rag.cli --help
+cp .env.example .env
+docker compose up --build
 ```
 
-轻量烟测建议使用抽取式模式：
+然后访问 `http://localhost:5173`，创建知识库、上传 `data/documents/formal/` 中资料、开始建库并提问。
 
-```bash
-legal-rag ingest --reset --llm-backend extractive
-legal-rag ask "试用期工资有什么要求？" --llm-backend extractive
-```
+## 配置约定
 
-前端演示：
+- API Key 只放在后端环境变量中，前端不得读取或展示密钥。
+- `SPRING_AI_OPENAI_BASE_URL` 可以指向 OpenAI-compatible `/v1` 地址。
+- `SPRING_AI_VECTORSTORE_PGVECTOR_DIMENSIONS` 默认 1536；如果模型维度不同，需要同步调整数据库 schema 并重建数据库 volume。
+- 文档上传目录通过 `LEGAL_RAG_UPLOAD_DIR` 配置。
 
-```bash
-streamlit run app.py
-```
+## 暂缓事项
 
-## GitHub 推送方式
-
-目标仓库：`guaixiaowuwuwu/local-legal-rag`
-
-本机在 Codex shell 中访问 GitHub SSH 直连 22 端口会被代理/fake IP 关闭，已验证可用方式是走 GitHub SSH-over-443，并通过本机 SOCKS5 代理 `127.0.0.1:7897`：
-
-```bash
-git remote set-url origin ssh://git@ssh.github.com:443/guaixiaowuwuwu/local-legal-rag.git
-git config core.sshCommand "ssh -o 'ProxyCommand=nc -X 5 -x 127.0.0.1:7897 %h %p'"
-git push
-```
-
-首次或 agent 为空时，先加入本机 SSH key：
-
-```bash
-ssh-add ~/.ssh/id_ed25519
-```
-
-推送前务必先检查：
-
-```bash
-git status --short
-git log --oneline --decorate --max-count=5
-```
-
-不要强推覆盖远端；如果远端已有提交，先 `git fetch origin main` 并正常合并或变基，确认内容后再推送。
-
-## 下一阶段优先级
-
-1. 先补齐本地环境与测试基线。
-2. 再升级 Streamlit 页面为可演示工作台。
-3. 然后导入真实法律资料并建立问答样例。
-4. 最后接入本地 Embedding 与 ChatGLM 模型做真实验证。
-
-详细任务请看 `NEXT_PHASE_TASKS.md`。
-
-## 编辑约束
-
-- 修改代码时尽量保持改动小而清晰。
-- 新增功能要配套最小必要测试。
-- 修改 Prompt、切分逻辑、检索逻辑时，要重点考虑法律场景下的准确性与可追溯性。
-- 若发现当前机器缺少依赖，不要直接声称功能失败；先说明缺少的依赖和可替代验证方式。
-- 遇到用户已有改动时，不要回滚，先理解并在其基础上继续工作。
+- 登录与权限系统。
+- 多租户隔离。
+- 联网法律检索。
+- 自动法律意见书生成。
+- 生产监控、审计、备份与权限治理。

@@ -1,139 +1,104 @@
 # 法律检索 · 本地知识库 RAG 问答系统
 
-基于 LangChain、中文 Embedding、本地向量库和 ChatGLM 的私有化法律知识库问答骨架。它把 PDF、Word、Markdown、TXT 文档读取后按法条结构切分，写入轻量本地 JSON、Chroma 或 FAISS，再通过 Top-K 检索和严格 Prompt 约束生成带来源的回答。
+基于 Spring Boot、Vue 3、PostgreSQL + pgvector 和 OpenAI-compatible API 的前后端分离法律知识库 RAG 系统。系统支持多知识库、文档上传、异步建库、向量检索问答和来源核验。
 
-## RAG 7 步对应
+## 架构
 
-1. 文档加载：`legal_rag.loaders.load_local_documents`
-2. 文本分割：`legal_rag.splitter.split_documents`
-3. 文本向量化：`legal_rag.embeddings.build_embeddings`
-4. 向量入库：`legal_rag.vectorstores.create_vector_store`
-5. Query 向量化：由配置的 Embedding 与 VectorStore 检索时完成
-6. Top-K 检索：`LegalRAGService.retrieve`
-7. Prompt + LLM：`legal_rag.prompting` + `legal_rag.llm.LocalChatGLM`
+- `backend/`：Spring Boot 3.5.x REST API，Java 17。
+- `frontend/`：Vue 3 + Vite + TypeScript 工作台。
+- `postgres-pgvector`：PostgreSQL + pgvector，保存知识库、文档、建库任务、chunk 和向量。
+- `data/documents/`：保留的演示资料，可通过前端上传到知识库。
 
-## 快速开始
+RAG 流程：
 
-### 轻量开发与测试
+1. 上传 `.pdf`、`.docx`、`.md`、`.txt`。
+2. 后端异步解析文档，PDF 保留页码。
+3. 按中文法条结构优先切分，超长文本按句子/窗口切分。
+4. 调用 OpenAI-compatible Embedding API。
+5. 写入 PostgreSQL pgvector。
+6. 问答时按知识库过滤 Top-K chunk。
+7. 构造严格法律 Prompt，调用 Chat API，返回回答和来源卡片。
 
-这条路径只安装项目本身和测试工具，不拉取 Chroma、FAISS、Torch、Transformers
-等大依赖，适合先确认本地代码、切分、Prompt、轻量烟测是否可运行。
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -U pip
-python3 -m pip install --no-deps -e .
-python3 -m pip install pytest
-python3 -m pytest -q
-```
-
-也可以不安装项目，直接用源码运行单元测试：
+## 快速启动
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
+cp .env.example .env
+# 编辑 .env，填入 SPRING_AI_OPENAI_API_KEY 和模型名
+docker compose up --build
 ```
 
-### 全量演示依赖
+访问：
 
-需要 Streamlit、Chroma、FAISS、Embedding 模型和本地 LLM 时，再安装完整依赖：
+- 前端：http://localhost:5173
+- 后端健康检查：http://localhost:8080/actuator/health
+- PostgreSQL：localhost:5432，库名/用户/密码均为 `legal_rag`
+
+首次演示：
+
+1. 打开前端并创建知识库。
+2. 上传 `data/documents/formal/` 下的资料。
+3. 点击“开始”创建建库任务。
+4. 任务成功后提问：`试用期工资有什么要求？`
+5. 查看回答和来源卡片。
+
+## 本地开发
+
+后端：
 
 ```bash
-source .venv/bin/activate
-python3 -m pip install -e ".[ui,faiss,dev]"
+cd backend
+mvn test
+mvn spring-boot:run
 ```
 
-2026-06-09 本机安装记录：
-
-- `.venv` 创建成功，`pip` 从 21.2.4 升级到 26.0.1 成功；升级后访问 PyPI
-  末尾出现一次 `SSLEOFError` 提示，但升级已经完成。
-- 已执行 `python3 -m pip install -e ".[ui,faiss,dev]"`。安装未观察到版本冲突，
-  但网络吞吐过低：`numpy` 5.3 MB 下载约 4 分 09 秒，随后 `chromadb`
-  21.7 MB 长时间无新进度，本次手动停止。
-- 当前可用替代验证：使用上面的轻量安装流程，`python3 -m pytest -q` 已通过。
-
-把法律条文、司法解释、判例或内部制度放入 `data/documents/formal/`。支持 `.pdf`、`.docx`、`.md`、`.txt`。
-默认配置只导入 `formal/`，不会把 `data/documents/examples/` 下的演示资料混入正式知识库。
-
-先用可重复的轻量抽取式模式做端到端烟测：
+前端：
 
 ```bash
-PYTHONPATH=src python3 -m legal_rag.cli smoke
+cd frontend
+npm install
+npm test
+npm run dev
 ```
 
-`smoke` 默认使用 `--vector-store local`、`--embedding-model hash` 和
-`--llm-backend extractive`，会完成示例文档加载、切分、写入本地 JSON 向量库、
-检索问答和来源输出。安装项目后也可以运行：
-
-```bash
-legal-rag smoke
-```
-
-默认配置使用 `hash` Embedding 和 `extractive` 回答模式，优先保证离线 MVP
-可重复运行。如果已经配置真实 Embedding 模型，可以通过环境变量或命令行参数覆盖
-`LEGAL_RAG_EMBEDDING_MODEL` / `--embedding-model`。
-
-用 Chroma 做默认烟测：
-
-```bash
-legal-rag ingest --reset --llm-backend extractive
-legal-rag ask "试用期工资有什么要求？" --llm-backend extractive
-```
-
-用 FAISS 做同样烟测：
-
-```bash
-legal-rag ingest --reset --llm-backend extractive --vector-store faiss --persist-dir data/vectorstore-faiss-smoke
-legal-rag ask "试用期工资有什么要求？" --llm-backend extractive --vector-store faiss --persist-dir data/vectorstore-faiss-smoke
-```
-
-接入本地 ChatGLM：
-
-```bash
-export LEGAL_RAG_LLM_BACKEND=chatglm
-export LEGAL_RAG_LLM_MODEL=/path/to/local/chatglm3-6b
-export LEGAL_RAG_EMBEDDING_MODEL=/path/to/local/bge-m3
-legal-rag ingest --reset
-legal-rag ask "劳动合同试用期有哪些限制？"
-```
-
-启动界面：
-
-```bash
-streamlit run app.py
-```
+前端开发服务器默认代理 `/api` 到 `http://localhost:8080`。
 
 ## 配置
 
-默认配置在 `configs/default.yaml`，也可以使用环境变量覆盖。常用项：
+后端通过环境变量读取配置：
 
-- `LEGAL_RAG_DOCS_DIR`：本地法律文档目录
-- `LEGAL_RAG_PERSIST_DIR`：本地向量库持久化目录
-- `LEGAL_RAG_VECTOR_STORE`：`local`、`chroma` 或 `faiss`
-- `LEGAL_RAG_EMBEDDING_MODEL`：中文向量模型名称或本地路径
-- `LEGAL_RAG_LLM_MODEL`：ChatGLM 模型名称或本地路径
-- `LEGAL_RAG_CHUNK_SIZE` / `LEGAL_RAG_CHUNK_OVERLAP`：法条切分窗口
-- `LEGAL_RAG_TOP_K`：召回数量
+- `SPRING_AI_OPENAI_BASE_URL`：OpenAI-compatible API 地址，默认 `https://api.openai.com/v1`。
+- `SPRING_AI_OPENAI_API_KEY`：API Key，前端不会读取或展示。
+- `SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL`：Chat 模型名。
+- `SPRING_AI_OPENAI_EMBEDDING_OPTIONS_MODEL`：Embedding 模型名。
+- `SPRING_AI_VECTORSTORE_PGVECTOR_DIMENSIONS`：Embedding 维度，默认 `1536`。
+- `LEGAL_RAG_UPLOAD_DIR`：上传文件保存目录。
+- `LEGAL_RAG_CHUNK_SIZE` / `LEGAL_RAG_CHUNK_OVERLAP`：切分参数。
+- `LEGAL_RAG_TOP_K`：默认召回数量。
 
-## 知识库资料
+当前 Flyway 迁移将 `rag_chunks.embedding` 创建为 `vector(1536)`。如果使用不同维度的 embedding 模型，需要修改迁移或重建数据库 volume 后再运行。
 
-当前首批资料位于 `data/documents/formal/labor/`，覆盖劳动合同、劳动法、社会保险和劳动争议调解仲裁的常见演示问题。
+## API 概览
 
-- `data/documents/README.md`：正式资料与示例资料的目录规范。
-- `data/documents/FORMAL_SOURCES.md`：每份正式资料的来源、版本、发布日期和适用范围台账。
-- `data/evaluation/labor_qa_examples.json`：10 条真实问答回归样例，每条包含期望来源文件和关键命中词。
+- `GET/POST /api/knowledge-bases`
+- `GET /api/knowledge-bases/{id}`
+- `GET/POST /api/knowledge-bases/{id}/documents`
+- `GET/DELETE /api/knowledge-bases/{id}/documents/{documentId}`
+- `POST /api/knowledge-bases/{id}/ingest-jobs`
+- `GET /api/ingest-jobs/{jobId}`
+- `POST /api/knowledge-bases/{id}/questions`
+- `GET /api/runtime-config`
 
-首批正文是“权威文本摘录版”，用于 MVP 检索链路和问答回归验证，不是完整法律库。正式使用前请导入全文资料，复核现行有效状态，然后重新建库。
+## 测试
 
-## 本地运行要求
+```bash
+cd backend && mvn test
+cd frontend && npm test && npm run build
+```
 
-- 轻量 smoke：Python 3.9+、CPU 即可，通常 2 GB 以上内存足够；不需要 GPU、模型权重或外网。
-- Chroma/FAISS + HuggingFace Embedding：建议 8 GB 以上内存、稳定网络和数 GB 磁盘空间；首次运行会下载或读取 Embedding 模型。
-- ChatGLM 本地生成：CPU 可跑但会很慢，建议 16-32 GB 内存；GPU 显存需求取决于模型大小和量化方式，6B 级模型通常建议至少 8-16 GB 显存，FP16 需要更多。
-- 离线运行时，把模型放到本机目录，并设置 `LEGAL_RAG_EMBEDDING_MODEL` 与 `LEGAL_RAG_LLM_MODEL` 指向这些目录。不要提交 `models/`、向量库或隐私资料。
+如 Maven 中央仓库下载中断，可重试 `mvn -U test`。Docker 构建同样依赖 Maven/NPM 网络可用。
 
 ## 法律场景约束
 
-Prompt 要求模型只基于检索原文回答，并在回答中标注 `[来源1]` 这类来源编号。若知识库没有足够依据，模型应明确说明无法回答，避免编造法条、案号或裁判观点。
+系统 Prompt 要求模型只依据检索原文回答，并在回答中标注 `[来源1]` 等来源编号。若知识库没有足够依据，应明确说明无法回答，避免编造法条、案号、发布日期或裁判观点。
 
-本项目是检索与问答工具，不替代律师正式法律意见。生产使用时请导入权威、完整、可追溯来源的法律文本，并定期重建向量库。
+本项目是检索与问答工具，不替代律师正式法律意见。生产使用前请导入权威、完整、可追溯来源的法律文本，复核现行有效状态，并在资料更新后重新建库。

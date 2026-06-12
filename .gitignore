@@ -1,10 +1,28 @@
 .DS_Store
 .env
+
+# Java / Spring Boot
+backend/target/
+backend/.mvn/
+*.class
+*.jar
+*.iml
+
+# Vue / Node
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/*.log
+
+# Runtime data
+storage/
+data/vectorstore*/
+models/
+
+# Old/local Python artifacts
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
-data/vectorstore*/
-models/
