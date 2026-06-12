@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- 新增劳动法规 RAG 评测脚本，可按 `labor_qa_examples.json` 输出问题 ID、Top-K 召回来源、期望来源命中、关键词命中和总体通过率。
+- 新增示例评测报告，方便本地演示和后续回归对比。
+- 后端新增 `RetrievalService` 检索服务边界，降低评测与问答控制器细节的耦合。
+- 新增 `LEGAL_RAG_MIN_SCORE` / `legal-rag.min-score` 最低相似度阈值配置；低于阈值的召回结果会被过滤。
+- 无足够检索依据时统一返回“本地知识库没有足够依据”，并保留 `[来源1]`、`[来源2]` 来源编号约束。
+- README 补充 RAG 评测命令和推荐参数 `LEGAL_RAG_TOP_K=8`、`LEGAL_RAG_MIN_SCORE=0.2`。
+
 ## 0.2.1
 
 - 修复 Docker 后端镜像构建在 Maven `dependency:go-offline` 阶段长时间无输出的问题。

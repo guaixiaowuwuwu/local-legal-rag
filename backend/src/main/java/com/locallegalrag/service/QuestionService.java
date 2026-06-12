@@ -1,11 +1,9 @@
 package com.locallegalrag.service;
 
-import com.locallegalrag.config.RagProperties;
 import com.locallegalrag.dto.QuestionResponse;
 import com.locallegalrag.dto.RetrievedChunkResponse;
 import com.locallegalrag.dto.SourceResponse;
 import com.locallegalrag.model.RetrievedChunk;
-import com.locallegalrag.repository.RagChunkRepository;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -13,37 +11,26 @@ import org.springframework.stereotype.Service;
 @Service
 public class QuestionService {
 
-    private final RagProperties properties;
-    private final KnowledgeBaseService knowledgeBaseService;
-    private final EmbeddingService embeddingService;
-    private final RagChunkRepository chunkRepository;
+    private final RetrievalService retrievalService;
     private final PromptBuilder promptBuilder;
     private final ChatService chatService;
 
     public QuestionService(
-            RagProperties properties,
-            KnowledgeBaseService knowledgeBaseService,
-            EmbeddingService embeddingService,
-            RagChunkRepository chunkRepository,
+            RetrievalService retrievalService,
             PromptBuilder promptBuilder,
             ChatService chatService
     ) {
-        this.properties = properties;
-        this.knowledgeBaseService = knowledgeBaseService;
-        this.embeddingService = embeddingService;
-        this.chunkRepository = chunkRepository;
+        this.retrievalService = retrievalService;
         this.promptBuilder = promptBuilder;
         this.chatService = chatService;
     }
 
     public QuestionResponse ask(UUID knowledgeBaseId, String question, Integer requestedTopK) {
-        knowledgeBaseService.require(knowledgeBaseId);
         if (question == null || question.isBlank()) {
             throw new BadRequestException("问题不能为空。");
         }
-        int topK = requestedTopK == null ? properties.getTopK() : Math.max(1, Math.min(requestedTopK, 20));
-        List<Double> queryEmbedding = embeddingService.embedQuery(question.strip());
-        List<RetrievedChunk> chunks = chunkRepository.search(knowledgeBaseId, queryEmbedding, topK);
+        String cleanQuestion = question.strip();
+        List<RetrievedChunk> chunks = retrievalService.search(knowledgeBaseId, cleanQuestion, requestedTopK);
         if (chunks.isEmpty()) {
             return new QuestionResponse(
                     "结论：" + PromptBuilder.NO_CONTEXT_MESSAGE + "\n依据：无。\n来源：无。",
@@ -51,7 +38,7 @@ public class QuestionService {
                     List.of()
             );
         }
-        String answer = chatService.generate(promptBuilder.build(question, chunks));
+        String answer = chatService.generate(promptBuilder.build(cleanQuestion, chunks));
         return new QuestionResponse(
                 answer,
                 sources(chunks),

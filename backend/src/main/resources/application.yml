@@ -36,4 +36,5 @@ legal-rag:
   chunk-size: ${LEGAL_RAG_CHUNK_SIZE:900}
   chunk-overlap: ${LEGAL_RAG_CHUNK_OVERLAP:120}
   top-k: ${LEGAL_RAG_TOP_K:5}
+  min-score: ${LEGAL_RAG_MIN_SCORE:0.0}
   embedding-dimensions: ${SPRING_AI_VECTORSTORE_PGVECTOR_DIMENSIONS:1536}

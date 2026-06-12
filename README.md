@@ -108,10 +108,44 @@ docker compose up --build
 - `LEGAL_RAG_UPLOAD_DIR`：上传文件保存目录。
 - `LEGAL_RAG_CHUNK_SIZE` / `LEGAL_RAG_CHUNK_OVERLAP`：切分参数。
 - `LEGAL_RAG_TOP_K`：默认召回数量。
+- `LEGAL_RAG_MIN_SCORE`：最低相似度阈值，默认 `0.0`。低于阈值的 chunk 会被过滤；过滤后没有足够依据时，问答返回“本地知识库没有足够依据”。
 
 当前 Flyway 迁移将 `rag_chunks.embedding` 创建为 `vector(1536)`。如果使用不同维度的 embedding 模型，需要修改迁移或重建数据库 volume 后再运行。
 
 如果只做启动 smoke test，`SPRING_AI_OPENAI_API_KEY` 可以为空；后端健康检查和知识库 CRUD 可用，但建库和问答会在调用模型 API 时失败并提示缺少 Key。
+
+## RAG 评测
+
+评测脚本位于 `data/evaluation/evaluate_labor_rag.py`，默认读取 `data/evaluation/labor_qa_examples.json`，通过 HTTP 调用已启动后端的问答接口。脚本会输出每个问题的 ID、Top-K 召回来源、期望来源命中、期望关键词命中，以及总体通过率。
+
+推荐评测参数：
+
+```bash
+LEGAL_RAG_TOP_K=8
+LEGAL_RAG_MIN_SCORE=0.2
+```
+
+使用流程：
+
+1. 在 `.env` 中配置有效的 OpenAI-compatible API Key、模型名、embedding 维度，并设置上面的评测参数。
+2. 启动服务：
+
+   ```bash
+   docker compose up --build
+   ```
+
+3. 在前端创建知识库，上传 `data/documents/formal/labor/` 下的正式摘录资料，并等待建库任务成功。
+4. 复制知识库 UUID 后运行：
+
+   ```bash
+   python3 data/evaluation/evaluate_labor_rag.py \
+     --base-url http://localhost:8080 \
+     --knowledge-base-id <知识库UUID> \
+     --top-k 8 \
+     --output data/evaluation/reports/labor_rag_evaluation.md
+   ```
+
+脚本退出码为 `0` 表示全部样例通过；只要有来源或关键词未命中，退出码为 `1`，便于后续接入 CI。报告示例见 `data/evaluation/reports/labor_rag_evaluation_example.md`。
 
 ## API 概览
 

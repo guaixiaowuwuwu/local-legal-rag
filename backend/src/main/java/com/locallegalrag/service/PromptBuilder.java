@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PromptBuilder {
 
-    public static final String NO_CONTEXT_MESSAGE = "未在本地知识库检索到足够相关的法律原文。请补充权威文件后重新建库，或换一种更具体的问法。";
+    public static final String NO_CONTEXT_MESSAGE = "本地知识库没有足够依据。未检索到足够相关的法律原文，请补充权威文件后重新建库，或换一种更具体的问法。";
 
     public String build(String question, List<RetrievedChunk> chunks) {
         return """
@@ -16,7 +16,7 @@ public class PromptBuilder {
                 必须遵守：
                 1. 只允许依据 <检索原文> 中的内容回答。
                 2. 不得编造法律条文、案号、发布日期、裁判观点或来源。
-                3. 如果检索原文不足以回答，直接说明“本地知识库未检索到足够依据”。
+                3. 如果检索原文不足以回答，直接说明“本地知识库没有足够依据”。
                 4. 回答中必须引用来源编号，例如 [来源1]。
                 5. 语言应准确、克制，不能替代律师正式法律意见。
 

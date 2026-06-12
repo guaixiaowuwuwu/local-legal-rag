@@ -1,7 +1,9 @@
 package com.locallegalrag.config;
 
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.nio.file.Path;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +26,10 @@ public class RagProperties {
 
     @Min(1)
     private int embeddingDimensions = 1536;
+
+    @DecimalMax("1.0")
+    @PositiveOrZero
+    private double minScore = 0.0d;
 
     public Path uploadPath() {
         return Path.of(uploadDir).toAbsolutePath().normalize();
@@ -67,5 +73,13 @@ public class RagProperties {
 
     public void setEmbeddingDimensions(int embeddingDimensions) {
         this.embeddingDimensions = embeddingDimensions;
+    }
+
+    public double getMinScore() {
+        return minScore;
+    }
+
+    public void setMinScore(double minScore) {
+        this.minScore = minScore;
     }
 }
