@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: legal_rag
       POSTGRES_PASSWORD: legal_rag
     ports:
-      - "5432:5432"
+      - "${LEGAL_RAG_POSTGRES_PORT:-15433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -37,7 +37,7 @@ services:
       LEGAL_RAG_CHUNK_OVERLAP: ${LEGAL_RAG_CHUNK_OVERLAP:-120}
       LEGAL_RAG_TOP_K: ${LEGAL_RAG_TOP_K:-5}
     ports:
-      - "8080:8080"
+      - "${LEGAL_RAG_BACKEND_PORT:-8080}:8080"
     volumes:
       - upload_data:/app/storage/uploads
 
@@ -48,7 +48,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:80"
+      - "${LEGAL_RAG_FRONTEND_PORT:-5173}:80"
 
 volumes:
   postgres_data:

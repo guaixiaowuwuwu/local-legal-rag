@@ -21,27 +21,50 @@ RAG 流程：
 
 ## 快速启动
 
+仅验证系统能启动时，可以不配置 API Key：
+
 ```bash
 cp .env.example .env
-# 编辑 .env，填入 SPRING_AI_OPENAI_API_KEY 和模型名
 docker compose up --build
 ```
+
+如需完成建库和问答演示，请先编辑 `.env`，设置有效的 `SPRING_AI_OPENAI_API_KEY`、模型名和对应 embedding 维度。
 
 访问：
 
 - 前端：http://localhost:5173
 - 后端健康检查：http://localhost:8080/actuator/health
-- PostgreSQL：localhost:5432，库名/用户/密码均为 `legal_rag`
+- PostgreSQL：localhost:15433，库名/用户/密码均为 `legal_rag`
+
+如果端口被占用，可在 `.env` 中调整：
+
+```bash
+LEGAL_RAG_FRONTEND_PORT=5174
+LEGAL_RAG_BACKEND_PORT=8081
+LEGAL_RAG_POSTGRES_PORT=15434
+```
 
 首次演示：
 
 1. 打开前端并创建知识库。
-2. 上传 `data/documents/formal/` 下的资料。
+2. 上传 `data/documents/examples/sample_internal_policy.md`，或上传你准备好的 `.pdf`、`.docx`、`.md`、`.txt` 文件。
 3. 点击“开始”创建建库任务。
 4. 任务成功后提问：`试用期工资有什么要求？`
 5. 查看回答和来源卡片。
 
+停止服务：
+
+```bash
+docker compose down
+```
+
 ## 本地开发
+
+本地开发通常需要先启动 PostgreSQL：
+
+```bash
+docker compose up -d postgres-pgvector
+```
 
 后端：
 
@@ -62,10 +85,21 @@ npm run dev
 
 前端开发服务器默认代理 `/api` 到 `http://localhost:8080`。
 
+完整本地验证：
+
+```bash
+cd backend && mvn test
+cd frontend && npm test && npm run build
+docker compose up --build
+```
+
 ## 配置
 
 后端通过环境变量读取配置：
 
+- `LEGAL_RAG_FRONTEND_PORT`：Docker Compose 暴露的前端端口，默认 `5173`。
+- `LEGAL_RAG_BACKEND_PORT`：Docker Compose 暴露的后端端口，默认 `8080`。
+- `LEGAL_RAG_POSTGRES_PORT`：Docker Compose 暴露的 PostgreSQL 端口，默认 `15433`。
 - `SPRING_AI_OPENAI_BASE_URL`：OpenAI-compatible API 地址，默认 `https://api.openai.com/v1`。
 - `SPRING_AI_OPENAI_API_KEY`：API Key，前端不会读取或展示。
 - `SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL`：Chat 模型名。
@@ -76,6 +110,8 @@ npm run dev
 - `LEGAL_RAG_TOP_K`：默认召回数量。
 
 当前 Flyway 迁移将 `rag_chunks.embedding` 创建为 `vector(1536)`。如果使用不同维度的 embedding 模型，需要修改迁移或重建数据库 volume 后再运行。
+
+如果只做启动 smoke test，`SPRING_AI_OPENAI_API_KEY` 可以为空；后端健康检查和知识库 CRUD 可用，但建库和问答会在调用模型 API 时失败并提示缺少 Key。
 
 ## API 概览
 
@@ -95,7 +131,35 @@ cd backend && mvn test
 cd frontend && npm test && npm run build
 ```
 
-如 Maven 中央仓库下载中断，可重试 `mvn -U test`。Docker 构建同样依赖 Maven/NPM 网络可用。
+如 Maven 中央仓库下载中断，可重试 `mvn -U test`。Docker 首次构建会下载 Maven/NPM 依赖，依赖 Docker Hub、Maven Central 和 npm registry 网络可用；后续构建会复用缓存。
+
+## Docker Compose smoke test
+
+推荐 smoke test：
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+看到后端启动完成后，在另一个终端验证：
+
+```bash
+curl http://localhost:8080/actuator/health
+curl http://localhost:5173/
+```
+
+预期：
+
+- 健康检查返回包含 `"status":"UP"` 的 JSON。
+- 前端首页返回 HTML。
+- 如果没有设置 API Key，页面会显示 API Key 未配置；这是预期状态，不影响启动 smoke test。
+
+## 已知问题
+
+- `npm run build` 可能输出 Rolldown 对 `@vueuse/core` pure annotation 的警告，以及前端 chunk 超过 500 kB 的警告；当前构建退出码为 0，属于非阻塞项。
+- 真实建库和问答依赖 OpenAI-compatible 服务、有效 API Key、模型名和 embedding 维度一致性。
+- 示例资料仅用于演示流程，不是权威或完整法律文本。
 
 ## 法律场景约束
 
